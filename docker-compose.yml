@@ -1,0 +1,49 @@
+version: '3'
+
+services:
+  php_fpm_8_1:
+    build:
+      context: ./application/php-fpm-8-1
+      dockerfile: Dockerfile
+    restart: always
+    volumes:
+      - ./storage/webroot:/usr/share/nginx/html
+      - ./logs/php-fpm/php:/var/log/php
+      - ./logs/cron:/var/log/cron
+    links:
+      - db_mysql_8_0
+      - db_redis
+  web_nginx:
+    build:
+      context: ./application/web_nginx
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./application/web_nginx/ca_files:/etc/nginx/ca_files
+      - ./application/web_nginx/nginx_conf:/etc/nginx/conf.d
+      - ./storage/webroot:/usr/share/nginx/html
+      - ./logs/nginx:/var/log/nginx
+    links:
+      - php_fpm_8_1
+  db_mysql_8_0:
+    image: mysql:8.0.30
+    ports:
+     - 3606:3306
+    restart: always
+    command: --skip-name-resolve 
+    volumes:
+     - ./storage/db_mysql_8_0/data:/var/lib/mysql
+     - ./application/db_mysql_8_0/conf:/etc/mysql/conf.d
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_USER=web_user
+      - MYSQL_PASSWORD=web_user
+      - MYSQL_DATABASE=web_db
+  db_redis:
+    build:
+      context: ./application/db_redis
+      dockerfile: Dockerfile
+    restart: always
